@@ -1,0 +1,7 @@
+seed: 42
+feature_backbone: swin3d_tiny
+temporal_model: transformer_encoder
+hidden_dim: 256
+layers: 2
+heads: 4
+splits: data/processed/r01_manifest.csv

@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+data/r01
+data/processed/
+models/
+outputs/
+*.zip
+*.mp4
+*.avi
+*.pth
+*.pt
+*.ckpt
+.DS_Store
+.streamlit/

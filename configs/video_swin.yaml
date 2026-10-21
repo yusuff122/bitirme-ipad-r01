@@ -1,0 +1,8 @@
+seed: 42
+backbone: swin3d_tiny
+pretrained: true
+clip_length: 16
+stride: 4
+batch_size: 4
+threshold_metric: f1
+splits: data/processed/r01_manifest.csv

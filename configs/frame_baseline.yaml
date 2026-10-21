@@ -1,0 +1,14 @@
+seed: 42
+backbone: resnet18
+pretrained: true
+weights: IMAGENET1K_V1
+image_size: 256
+batch_size: 32
+score_method: knn
+knn_k: 5
+normalize_embeddings: true
+max_memory_samples: null
+threshold_method: quantile
+threshold_quantile: 0.995
+manifest: data/processed/r01_manifest.csv
+dataset_root: data/r01
