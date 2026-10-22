@@ -72,7 +72,14 @@ def main():
     device = get_device()
     from torchvision import transforms
     from src.models.frame_baseline import ResNet18FeatureExtractor, knn_scores
-    model = ResNet18FeatureExtractor(pretrained=False).to(device).eval()
+    # The memory bank was built using pretrained ImageNet features. Recreate the
+    # identical backbone weights at evaluation time; an untrained backbone makes
+    # all test embeddings incomparable with the saved bank.
+    use_pretrained = bool(run_cfg.get('pretrained', True))
+    model = ResNet18FeatureExtractor(pretrained=use_pretrained).to(device).eval()
+    expected_weights = run_cfg.get('weights_name')
+    if expected_weights and model.weights_name != expected_weights:
+        raise ValueError(f"Feature weight mismatch: run={expected_weights}, loaded={model.weights_name}")
     weights = torch.load(run_dir / 'memory_bank.pt', map_location='cpu', weights_only=True).float()
     if weights.ndim != 2 or weights.shape[1] != model.embedding_dim:
         raise ValueError(f'Invalid memory bank shape: {tuple(weights.shape)}; expected (N,{model.embedding_dim})')

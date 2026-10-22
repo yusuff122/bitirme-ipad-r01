@@ -139,6 +139,7 @@ def main():
     config_out = {
         **cfg, 'seed': int(cfg['seed']), 'backbone': 'resnet18',
         'weights': 'ResNet18_Weights.DEFAULT' if cfg['pretrained'] else None,
+        'weights_name': model.weights_name,
         'embedding_dim': int(model.embedding_dim), 'device': str(device), 'timestamp': now.isoformat(),
         'train_sequences': train_sequences, 'validation_sequences': val_sequences,
         'test_sequences': test_sequences, 'num_train_frames': int(len(train)),

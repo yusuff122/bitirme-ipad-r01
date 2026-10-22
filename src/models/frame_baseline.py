@@ -9,6 +9,7 @@ class ResNet18FeatureExtractor(nn.Module):
         model = resnet18(weights=weights)
         self.features = nn.Sequential(*list(model.children())[:-1])
         self.embedding_dim = model.fc.in_features
+        self.weights_name = weights.name if weights is not None else None
         self.eval()
         for p in self.parameters(): p.requires_grad = False
     @torch.inference_mode()
