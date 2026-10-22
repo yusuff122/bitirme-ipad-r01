@@ -102,6 +102,34 @@ python -m src.evaluation.evaluate_temporal_memory \
 
 Değerlendirme E0–E3 karşılaştırma raporlarını da günceller. E3 için T4'te 2 GB civarı boş VRAM yeterli olmalıdır; 16 GB T4 rahattır.
 
+### E4 domain-adapted Video Swin (Colab)
+
+E4, Kinetics-400 ön-eğitimli Video Swin Tiny'nin yalnızca son aşamasını ve final normunu normal R01 train klipleriyle temporal InfoNCE kullanarak adapte eder. Aynı sequence içindeki 1–3 klip uzaklıktaki çiftler pozitif; batch'teki farklı sequence'ler negatif örnektir. Validation normal sequence'leri early stopping ve frame-level threshold için kullanılır. Eğitim test label sütununu okumaz. Fine-tuning için klip pikselleri yeniden kodlanır; E1 metadata/klip indeks cache'i doğrulanıp aynı frame eşleşmesi korunur.
+
+Önce küçük smoke test:
+
+```bash
+python scripts/smoke_test_e4.py
+```
+
+Full eğitim henüz başlatılmadı. Colab'da:
+
+```bash
+cd /content/drive/MyDrive/bitirme
+python -m src.training.train_adapted_video_swin \
+  --config configs/video_swin_adapted.yaml \
+  --e1-run-dir models/E1_video_swin16_20261022_090120
+```
+
+Final test değerlendirmesi:
+
+```bash
+python -m src.evaluation.evaluate_adapted_video_swin \
+  --run-dir models/E4_adapted_swin_<timestamp>
+```
+
+Batch config'i 4 positive pair olarak ayarlanmıştır (8 Video Swin klip); CUDA mixed precision açıktır. T4 16 GB önerilir; yaklaşık VRAM ihtiyacı 8–12 GB olarak tahmin edilmiştir.
+
 ### Local E0 commands
 
 ```bash
@@ -129,4 +157,4 @@ streamlit run app/streamlit_app.py
 
 ## Sonuçların durumu
 
-E0, E1 ve E2 final test sonuçları tamamlandı; E1 ve E2, E0 AUROC değerini geçmedi. E3 temporal-memory kodu ve cache tabanlı smoke test hazırlandı. E3 smoke testi performans sonucu değildir ve full E3 eğitimi henüz başlatılmadı. Sonuçlar her full koşunun kendi `metrics.json` ve tahmin dosyalarından raporlanmalıdır.
+E0–E3 final test sonuçları tamamlandı; E0 en iyi AUROC değerine sahip. E4 partial fine-tuning kodu ve smoke testi hazırlandı. E4 smoke testi performans sonucu değildir ve full E4 eğitimi henüz başlatılmadı. Sonuçlar her full koşunun kendi `metrics.json` ve tahmin dosyalarından raporlanmalıdır.

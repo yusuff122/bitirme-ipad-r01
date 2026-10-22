@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 data/r01
 data/processed/
-models/
+/models/
 outputs/
 *.zip
 *.mp4

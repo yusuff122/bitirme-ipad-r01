@@ -6,5 +6,6 @@
 4. E1: generate 16-frame clips at stride 4 within each sequence, extract frozen Video Swin Tiny features, train normal clip bank, map clip scores back to frame timeline.
 5. E2: train a GRU next-embedding predictor on frozen E1 features; use only validation normal prediction loss for early stopping and a validation frame-level threshold.
 6. E3: evaluate a GRU temporal predictor with a learned prototype memory over frozen Video Swin embeddings; do not train the full model until smoke checks pass and the user requests the run.
+7. E4: adapt only the final Video Swin stage and final norm with normal-only temporal contrastive learning; evaluate adapted 768-D embeddings with the E1 kNN protocol.
 
 No experiment metrics are claimed until a run produces them.
