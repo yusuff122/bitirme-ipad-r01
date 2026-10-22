@@ -75,6 +75,33 @@ python -m src.evaluation.evaluate_temporal_gru \
 
 GPU üzerinde GRU ve batch verisi için yaklaşık 1–2 GB VRAM yeterlidir; T4 16 GB ile rahatça çalışmalıdır. E1 embedding'leri önceden hesaplanmış olduğundan E2 sırasında Video Swin modeli tekrar çalıştırılmaz.
 
+### E3 temporal memory (Colab)
+
+E3, E1'in aynı dondurulmuş embedding cache'ine GRU ve 64 öğrenilebilir normal-pattern prototype belleği ekler. Smoke test:
+
+```bash
+python scripts/smoke_test_e3.py
+```
+
+Full eğitim henüz başlatılmadı. Kullanıcı onayıyla Colab'da eğitim:
+
+```bash
+cd /content/drive/MyDrive/bitirme
+python -m src.training.train_temporal_memory \
+  --config configs/temporal_memory.yaml \
+  --e1-run-dir models/E1_video_swin16_20261022_090120
+```
+
+Eğitim çıktısındaki run klasörüyle final test değerlendirmesi:
+
+```bash
+python -m src.evaluation.evaluate_temporal_memory \
+  --run-dir models/E3_memory_<timestamp> \
+  --e1-run-dir models/E1_video_swin16_20261022_090120
+```
+
+Değerlendirme E0–E3 karşılaştırma raporlarını da günceller. E3 için T4'te 2 GB civarı boş VRAM yeterli olmalıdır; 16 GB T4 rahattır.
+
 ### Local E0 commands
 
 ```bash
@@ -102,4 +129,4 @@ streamlit run app/streamlit_app.py
 
 ## Sonuçların durumu
 
-E0 ve E1 final test sonuçları tamamlandı; E1, E0'dan zayıf kaldı. E2 GRU kodu ve cache tabanlı smoke test hazırlandı. E2 smoke testi performans sonucu değildir ve full E2 eğitimi henüz başlatılmadı. Sonuçlar her full koşunun kendi `metrics.json` ve tahmin dosyalarından raporlanmalıdır.
+E0, E1 ve E2 final test sonuçları tamamlandı; E1 ve E2, E0 AUROC değerini geçmedi. E3 temporal-memory kodu ve cache tabanlı smoke test hazırlandı. E3 smoke testi performans sonucu değildir ve full E3 eğitimi henüz başlatılmadı. Sonuçlar her full koşunun kendi `metrics.json` ve tahmin dosyalarından raporlanmalıdır.
