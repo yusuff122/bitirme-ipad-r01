@@ -52,6 +52,29 @@ Model çalıştırmaları için önerilen ortam Google Colab GPU'dur. Proje klas
 
 `notebooks/E1_R01_Video_Swin_Colab.ipynb` Colab'da önce bir train/validation/test sequence'iyle smoke test, sonra kullanıcı açıkça hücreyi açtığında full feature extraction ve test değerlendirmesini çalıştırır. Yerel Mac'i dataset inceleme, kod geliştirme ve smoke test için kullanın; full E1 için Colab GPU önerilir. Pipeline, torchvision Video Swin Tiny pretrained Kinetics-400 ağırlıklarını ve resmi deterministic transform'u kullanır. Klip cache'leri `models/E1_video_swin16_cache/` altında saklanır.
 
+### E2 GRU (Colab)
+
+E2, E1'in normalize edilmiş 768 boyutlu Video Swin klip embedding'lerini kullanır ve GRU'yu sonraki embedding'i tahmin edecek şekilde eğitir. E1 run klasörünü, `embeddings/` cache dosyaları ve metadata JSON'ları dahil, Drive'daki proje içine `models/E1_video_swin16_20261022_090120/` adıyla yükleyin. Veri manifesti ve R01 dataset'i de projede olmalı. İlk kurulumda Colab'da `pip install -r requirements.txt` ve `python scripts/prepare_r01.py --root data/r01` çalıştırılmalıdır (hazır, doğru manifest varsa yeniden hazırlamak gerekmez).
+
+Tam E2 eğitimi ve final test değerlendirmesi şu komutlarla başlar. Eğitim en fazla 30 epoch sürer; eşik yalnızca validation normal frame skorlarından belirlenir. Eğitim komutu test etiketlerini yüklemez; etiketler yalnızca değerlendirme komutunda okunur.
+
+```bash
+cd /content/drive/MyDrive/bitirme
+python -m src.training.train_temporal_gru \
+  --config configs/temporal_gru.yaml \
+  --e1-run-dir models/E1_video_swin16_20261022_090120
+```
+
+Komut sonunda yazdırılan `models/E2_gru_<timestamp>` yolunu değerlendirmeye verin:
+
+```bash
+python -m src.evaluation.evaluate_temporal_gru \
+  --run-dir models/E2_gru_<timestamp> \
+  --e1-run-dir models/E1_video_swin16_20261022_090120
+```
+
+GPU üzerinde GRU ve batch verisi için yaklaşık 1–2 GB VRAM yeterlidir; T4 16 GB ile rahatça çalışmalıdır. E1 embedding'leri önceden hesaplanmış olduğundan E2 sırasında Video Swin modeli tekrar çalıştırılmaz.
+
 ### Local E0 commands
 
 ```bash
@@ -79,4 +102,4 @@ streamlit run app/streamlit_app.py
 
 ## Sonuçların durumu
 
-E0 final test sonucu tamamlandı. E1 pipeline kodu ve sınırlı smoke test hazır; full E1 ve final test metrikleri henüz üretilmedi. Yerel smoke test run'ı performans sonucu değildir. Sonuçlar her full koşunun kendi `metrics.json` ve tahmin dosyalarından raporlanmalıdır.
+E0 ve E1 final test sonuçları tamamlandı; E1, E0'dan zayıf kaldı. E2 GRU kodu ve cache tabanlı smoke test hazırlandı. E2 smoke testi performans sonucu değildir ve full E2 eğitimi henüz başlatılmadı. Sonuçlar her full koşunun kendi `metrics.json` ve tahmin dosyalarından raporlanmalıdır.

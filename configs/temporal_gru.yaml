@@ -1,0 +1,13 @@
+seed: 42
+e1_run_dir: models/E1_video_swin16_20261022_090120
+manifest: data/processed/r01_manifest.csv
+dataset_root: data/r01
+output_root: models
+context_length: 8
+hidden_dim: 256
+epochs: 30
+batch_size: 64
+learning_rate: 0.001
+weight_decay: 0.00001
+patience: 5
+threshold_quantile: 0.995
