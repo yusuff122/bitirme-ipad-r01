@@ -28,7 +28,8 @@ def extract_embeddings(records,model,transform,device,cfg,name):
             with torch.autocast(device_type='cuda',dtype=torch.float16,enabled=bool(cfg['mixed_precision'] and device.type=='cuda')):
                 features,_=model(videos)
             features=torch.nn.functional.normalize(features.float(),dim=1)
-            if not torch.isfinite(features).all() or not torch.allclose(features.norm(dim=1),torch.ones(len(features)),atol=1e-4): raise RuntimeError(f'{name} embedding check failed')
+            norms=features.norm(dim=1)
+            if not torch.isfinite(features).all() or not torch.allclose(norms,torch.ones_like(norms),atol=1e-4): raise RuntimeError(f'{name} embedding check failed')
             vectors.append(features.cpu()); metas.extend(meta)
     if not vectors: raise ValueError(f'No clips in {name}')
     return torch.cat(vectors),metas
@@ -58,7 +59,10 @@ def main():
     trainable=[p for p in model.parameters() if p.requires_grad]; frozen=[p for p in model.parameters() if not p.requires_grad]
     backbone_params=[p for n,p in model.named_parameters() if p.requires_grad and not n.startswith('projection_head.')]; projection_params=list(model.projection_head.parameters())
     optimizer=torch.optim.AdamW([{'params':backbone_params,'lr':cfg['backbone_learning_rate']},{'params':projection_params,'lr':cfg['projection_learning_rate']}],weight_decay=cfg['weight_decay'])
-    scaler=torch.amp.GradScaler('cuda',enabled=bool(cfg['mixed_precision'] and device.type=='cuda')); best=float('inf'); best_state=None; stale=0; history=[]
+    now=datetime.now().astimezone(); run=Path(cfg['output_root'])/f"E4_adapted_swin_{now.strftime('%Y%m%d_%H%M%S')}"; run.mkdir(parents=True,exist_ok=False); (run/'figures').mkdir()
+    checkpoint_cfg={**cfg,'e1_run_dir':str(e1.resolve()),'manifest':str(Path(cfg['manifest']).resolve()),'device':str(device),'weights_name':WEIGHTS_NAME,'embedding_dim':768,'projection_dim':128,'trainable_parameters':sum(x.numel() for x in trainable),'frozen_parameters':sum(x.numel() for x in frozen),'trainable_parameter_names':model.trainable_parameter_names(),'train_clip_count':len(train_ds),'validation_clip_count':len(val_ds),'test_labels_read':False}
+    (run/'config.json').write_text(json.dumps(checkpoint_cfg,indent=2),encoding='utf-8')
+    scaler=torch.amp.GradScaler('cuda',enabled=bool(cfg['mixed_precision'] and device.type=='cuda')); best=float('inf'); best_state=None; best_epoch=None; stale=0; history=[]
     for epoch in range(1,(a.epochs or cfg['epochs'])+1):
         train_ds.set_epoch(epoch); train_sampler.set_epoch(epoch); model.train(); losses=[]
         for xa,xb,_seq,_positive_idx in train_loader:
@@ -79,7 +83,9 @@ def main():
                 val_losses.append(float(loss.cpu()))
         if not losses or not val_losses: raise ValueError('No valid contrastive batches; increase pair batch size or check split')
         tr=float(np.mean(losses)); va=float(np.mean(val_losses)); history.append({'epoch':epoch,'train_contrastive_loss':tr,'validation_contrastive_loss':va}); print(f'Epoch {epoch:02d}: train InfoNCE={tr:.6f}; validation InfoNCE={va:.6f}')
-        if va<best: best=va; stale=0; best_state={k:v.detach().cpu().clone() for k,v in model.state_dict().items()}
+        if va<best:
+            best=va; best_epoch=epoch; stale=0; best_state={k:v.detach().cpu().clone() for k,v in model.state_dict().items()}
+            torch.save({'state_dict':best_state,'config':checkpoint_cfg,'best_epoch':best_epoch,'best_validation_contrastive_loss':best},run/'best_checkpoint.pt')
         else:
             stale+=1
             if stale>=cfg['patience']: print('Early stop; best validation contrastive loss:',best); break
@@ -92,9 +98,8 @@ def main():
     val_clip_scores=knn_scores(val_emb,train_emb,cfg['knn_k']).numpy(); val_frame_rows=map_clip_scores_to_frames(val_clips,val_clip_scores,splits['val']); val_frames=pd.DataFrame(val_frame_rows)
     if len(val_frames)!=1612: raise ValueError(f'Expected 1612 validation frames, got {len(val_frames)}')
     threshold=float(np.quantile(val_frames.anomaly_score,cfg['threshold_quantile']))
-    now=datetime.now().astimezone(); run=Path(cfg['output_root'])/f"E4_adapted_swin_{now.strftime('%Y%m%d_%H%M%S')}"; run.mkdir(parents=True,exist_ok=False); (run/'figures').mkdir()
-    outcfg={**cfg,'e1_run_dir':str(e1.resolve()),'manifest':str(Path(cfg['manifest']).resolve()),'device':str(device),'timestamp':now.isoformat(),'train_sequences':sorted(splits['train'].sequence.unique()),'validation_sequences':sorted(splits['val'].sequence.unique()),'test_sequences':sorted(splits['test'].sequence.unique()),'train_clip_count':len(train_emb),'validation_clip_count':len(val_emb),'test_clip_count':882,'num_test_frames':3685,'embedding_dim':768,'projection_dim':128,'knn_k':cfg['knn_k'],'trainable_parameters':sum(x.numel() for x in trainable),'frozen_parameters':sum(x.numel() for x in frozen),'trainable_parameter_names':model.trainable_parameter_names(),'test_labels_read':False,'e1_cache_metadata_validated':True}
-    torch.save({'state_dict':best_state,'config':outcfg},run/'model.pt'); torch.save({k:v for k,v in best_state.items() if k.startswith('projection_head.')},run/'projection_head.pt'); torch.save(train_emb,run/'adapted_train_embeddings.pt'); torch.save(val_emb,run/'adapted_validation_embeddings.pt'); torch.save(train_emb,run/'memory_bank.pt'); pd.DataFrame(history).to_csv(run/'training_history.csv',index=False)
+    outcfg={**cfg,'e1_run_dir':str(e1.resolve()),'manifest':str(Path(cfg['manifest']).resolve()),'device':str(device),'timestamp':now.isoformat(),'best_epoch':best_epoch,'train_sequences':sorted(splits['train'].sequence.unique()),'validation_sequences':sorted(splits['val'].sequence.unique()),'test_sequences':sorted(splits['test'].sequence.unique()),'train_clip_count':len(train_emb),'validation_clip_count':len(val_emb),'test_clip_count':882,'num_test_frames':3685,'embedding_dim':768,'projection_dim':128,'knn_k':cfg['knn_k'],'trainable_parameters':sum(x.numel() for x in trainable),'frozen_parameters':sum(x.numel() for x in frozen),'trainable_parameter_names':model.trainable_parameter_names(),'test_labels_read':False,'e1_cache_metadata_validated':True}
+    torch.save({'state_dict':best_state,'config':outcfg,'best_epoch':best_epoch,'best_validation_contrastive_loss':best},run/'model.pt'); torch.save({k:v for k,v in best_state.items() if k.startswith('projection_head.')},run/'projection_head.pt'); torch.save(train_emb,run/'adapted_train_embeddings.pt'); torch.save(val_emb,run/'adapted_validation_embeddings.pt'); torch.save(train_emb,run/'memory_bank.pt'); pd.DataFrame(history).to_csv(run/'training_history.csv',index=False)
     pd.DataFrame(val_clips).assign(anomaly_score=val_clip_scores).to_csv(run/'clip_scores.csv',index=False); (run/'validation_clips.json').write_text(json.dumps(val_clips),encoding='utf-8')
     q=cfg['threshold_quantile']; threshold_info={'threshold':threshold,'method':'validation normal frame-score quantile','quantile':q,'score_granularity':'frame-level after mean clip coverage aggregation','num_validation_frames':len(val_frames),'validation_score_mean':float(val_frames.anomaly_score.mean()),'validation_score_std':float(val_frames.anomaly_score.std()),'validation_score_min':float(val_frames.anomaly_score.min()),'validation_score_max':float(val_frames.anomaly_score.max()),'test_used_for_threshold':False}; (run/'threshold.json').write_text(json.dumps(threshold_info,indent=2)); (run/'config.json').write_text(json.dumps(outcfg,indent=2))
     (run/'run_summary.md').write_text(f"# E4 adapted Video Swin\n\n- Pretrained: {WEIGHTS_NAME}; only final stage, final norm and projection head trained.\n- Train clips: {len(train_emb)}; validation clips: {len(val_emb)}.\n- Positive pairs: same sequence, temporal offset 1–{cfg['positive_max_offset']} clips; negatives are other sequences in each batch.\n- Best validation contrastive loss: {best:.8f}.\n- Threshold: validation normal frame scores q={q}, {threshold:.8f}. Test labels read: false.\n")
