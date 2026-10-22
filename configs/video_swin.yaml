@@ -1,8 +1,16 @@
 seed: 42
-backbone: swin3d_tiny
+model_name: swin3d_t
+backbone: swin3d_t
 pretrained: true
+weights_name: Swin3D_T_Weights.KINETICS400_V1
 clip_length: 16
 stride: 4
+input_size: [224, 224]
 batch_size: 4
-threshold_metric: f1
-splits: data/processed/r01_manifest.csv
+num_workers: 2
+score_method: knn
+knn_k: 5
+normalize_embeddings: true
+threshold_method: quantile
+threshold_quantile: 0.995
+manifest: data/processed/r01_manifest.csv

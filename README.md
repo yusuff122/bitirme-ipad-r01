@@ -50,7 +50,7 @@ Model çalıştırmaları için önerilen ortam Google Colab GPU'dur. Proje klas
 4. Proje içindeki `notebooks/E0_R01_Frame_Baseline_Colab.ipynb` notebook'unu Colab'da açın.
 5. İlk Drive mount hücresinden başlayarak hücreleri sırayla çalıştırın. Yapılandırma hücresindeki `PROJECT_ROOT` ve `DATASET_ROOT` yollarını gerektiğinde güncelleyin. Eğitim/threshold/test adımları Colab'da çalışır ve run dosyaları Drive'a kaydolur.
 
-`notebooks/E1_R01_Video_Swin_Colab.ipynb` şu an çalıştırılabilir klip/model iskeletidir; E1 eğitimi başlatılmaz. Local Mac'i dataset inceleme, kod geliştirme ve smoke test için kullanın; uzun model çalıştırmaları için Colab GPU önerilir.
+`notebooks/E1_R01_Video_Swin_Colab.ipynb` Colab'da önce bir train/validation/test sequence'iyle smoke test, sonra kullanıcı açıkça hücreyi açtığında full feature extraction ve test değerlendirmesini çalıştırır. Yerel Mac'i dataset inceleme, kod geliştirme ve smoke test için kullanın; full E1 için Colab GPU önerilir. Pipeline, torchvision Video Swin Tiny pretrained Kinetics-400 ağırlıklarını ve resmi deterministic transform'u kullanır. Klip cache'leri `models/E1_video_swin16_cache/` altında saklanır.
 
 ### Local E0 commands
 
@@ -62,7 +62,8 @@ python -m src.evaluation.evaluate_frame --run-dir models/<E0-run>
 **Because IPAD training data contains only normal operation, the anomaly threshold is calibrated exclusively from held-out normal validation sequences.** E0 uses frozen ImageNet ResNet18 512-dimensional global average pooled features from 256×256 inputs. Training uses normal R01 training sequences; validation uses held-out normal training sequences, split by sequence with seed 42. The default threshold is the 99.5th percentile of validation normal anomaly scores. Official testing sequences and `.npy` frame labels are used only for final evaluation; test data never tunes the threshold. Each run saves config, threshold statistics, memory bank, test predictions, metrics, and a run summary under `models/E0_frame_resnet18_<timestamp>/`. E1 iskeleti:
 
 ```bash
-python -m src.training.train_video_baseline --config configs/video_swin.yaml
+python -m scripts.smoke_test_video --batch-size 1
+python -m src.training.train_video_baseline --config configs/video_swin.yaml --batch-size 4
 python -m src.evaluation.evaluate_video --run-dir models/<E1-run>
 ```
 
@@ -78,4 +79,4 @@ streamlit run app/streamlit_app.py
 
 ## Sonuçların durumu
 
-Full E0/E1 model eğitimi ve final test sonuçları henüz üretilmemiştir. Yerel smoke test run'ı performans sonucu değildir. Sonuçlar her full koşunun kendi `metrics.json` ve tahmin dosyalarından raporlanmalıdır.
+E0 final test sonucu tamamlandı. E1 pipeline kodu ve sınırlı smoke test hazır; full E1 ve final test metrikleri henüz üretilmedi. Yerel smoke test run'ı performans sonucu değildir. Sonuçlar her full koşunun kendi `metrics.json` ve tahmin dosyalarından raporlanmalıdır.
