@@ -1,0 +1,19 @@
+# Colab paths: all E5 checkpoints and reports are written to Google Drive.
+seed: 42
+repo_root: /content/bitirme-ipad-r01
+e4_run_dir: /content/drive/MyDrive/bitirme-ipad-r01/models/E4_adapted_swin_20261022_175740
+manifest: /content/bitirme-ipad-r01/data/processed/r01_manifest.csv
+output_root: /content/drive/MyDrive/bitirme-ipad-r01/models
+smoke_report: /content/drive/MyDrive/bitirme-ipad-r01/models/e5_smoke_test.json
+context_length: 8
+input_dim: 768
+hidden_dim: 256
+num_layers: 1
+dropout: 0.0
+epochs: 30
+batch_size: 64
+learning_rate: 0.001
+weight_decay: 0.00001
+patience: 5
+threshold_quantile: 0.995
+num_workers: 0

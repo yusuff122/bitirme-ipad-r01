@@ -121,6 +121,15 @@ python -m src.training.train_adapted_video_swin \
   --e1-run-dir models/E1_video_swin16_20261022_090120
 ```
 
+Eğitim tamamlanıp embedding extraction aşamasında kesilirse ve checkpoint mevcutsa, yeniden eğitim yapmadan artifact'ları şu komutla tamamlayın:
+
+```bash
+python -m src.training.finalize_adapted_video_swin \
+  --run-dir models/E4_adapted_swin_<timestamp> \
+  --checkpoint models/E4_adapted_swin_<timestamp>/best_checkpoint.pt \
+  --e1-run-dir models/E1_video_swin16_20261022_090120
+```
+
 Final test değerlendirmesi:
 
 ```bash
@@ -129,6 +138,37 @@ python -m src.evaluation.evaluate_adapted_video_swin \
 ```
 
 Batch config'i 4 positive pair olarak ayarlanmıştır (8 Video Swin klip); CUDA mixed precision açıktır. T4 16 GB önerilir; yaklaşık VRAM ihtiyacı 8–12 GB olarak tahmin edilmiştir.
+
+### E5 GRU on E4 adapted features (Colab)
+
+E5, `/content/drive/MyDrive/bitirme-ipad-r01/models/E4_adapted_swin_20261022_175740/` içindeki kayıtlı adapted 768-D embedding'leri doğrudan kullanır; Video Swin tekrar çalıştırılmaz. Eğitim/evaluation çıktıları Drive'daki `/content/drive/MyDrive/bitirme-ipad-r01/models/` altına kaydedilir. Smoke testi gerçek E4 cache'ini, 1479/385/882 clip sayısını, 768 boyutu, embedding sırasını ve sequence sınırlarını doğrular. E4 cache yoksa test başarısız olur; sentetik cache kabul edilmez.
+
+Colab hücresinde önce Drive'ı bağlayıp çalışma kopyasına geçin:
+
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+%cd /content/bitirme-ipad-r01
+```
+
+Önce gerçek-cache smoke testi:
+
+```bash
+python scripts/smoke_test_e5.py --config configs/e5_adapted_gru.yaml
+```
+
+Full GRU eğitimi henüz başlatılmadı. Komut:
+
+```bash
+python -m src.training.train_e5_temporal_gru --config configs/e5_adapted_gru.yaml
+```
+
+Final test değerlendirmesi:
+
+```bash
+python -m src.evaluation.evaluate_e5_temporal_gru \
+  --run-dir /content/drive/MyDrive/bitirme-ipad-r01/models/E5_adapted_gru_<timestamp>
+```
 
 ### Local E0 commands
 
